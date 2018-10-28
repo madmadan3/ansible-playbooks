@@ -1,0 +1,43 @@
+- hosts: all
+  become: yes
+  tasks:
+
+#    - name: Ansible copy files remote to remote
+#      copy:
+#        src: /etc/ansible/playbooks/configs/50unattended-upgrades
+#        dest: /etc/apt/apt.conf.d/50unattended-upgrades
+#        force: yes
+#    - name: Ansible copy files remote to remote
+#      copy:
+#        src: /etc/ansible/playbooks/configs/10periodic
+#        dest: /etc/apt/apt.conf.d/10periodic
+#        force: yes
+
+
+    - name: Update cache
+      apt: update_cache=yes
+
+    - name: Ubuntu - Install the security updates
+      shell: unattended-upgrade
+      register: apt_output
+    - name: check if reboot needed
+      stat:
+       path: /var/run/reboot-required
+      register: deb_reboot_required_check
+
+    - name: restart system
+      command: shutdown -r +1 "Rebooting System After Patching"
+      async: 0
+      poll: 0
+      when: deb_reboot_required_check.stat.exists
+      register: reboot_started
+      ignore_errors: true
+
+    - name: wait for node to finish booting
+      become: false
+      local_action: wait_for host=0.0.0.0
+          port=22
+          state=started
+          delay=5
+          timeout=300
+      ignore_errors: true
