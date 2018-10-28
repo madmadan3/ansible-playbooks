@@ -1,0 +1,10 @@
+- hosts: localhost
+  tasks:
+  - ec2_ami:
+      instance_id: i-07c4cf045af32eeb8
+      wait: yes
+      region: us-east-1
+      name: patch20180920
+      tags:
+        Name: newtest
+        Service: TestService
