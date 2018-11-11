@@ -1,0 +1,18 @@
+- hosts: all
+  become: yes
+  tasks:
+
+ 
+ 
+     - name: Updating stack
+       shell: sh -c 'aws cloudformation update-stack --stack-name DEMOTEST --region us-east-1 --use-previous-template --parameters ParameterKey=InstanceImageId,ParameterValue=ami-013be31976ca2c322'
+       environment:
+          AWS_ACCESS_KEY_ID: "{{ lookup('env','AWS_ACCESS_KEY') }}"
+          AWS_SECRET_ACCESS_KEY: "{{ lookup('env','AWS_SECRET_KEY') }}" 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
