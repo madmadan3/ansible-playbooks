@@ -1,0 +1,11 @@
+- hosts: localhost
+  tasks:
+
+  - name: Describe Load Balancers
+    register: elbs
+    local_action:
+      module: shell python3 -E /usr/bin/aws ec2 describe-security-groups  --region us-east-1
+
+
+  - debug: msg="{{ elbs.stdout }}"
+
