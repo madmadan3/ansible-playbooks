@@ -28,3 +28,73 @@
          vpc_subnet_id: "{{ subnet_id }}"
          assign_public_ip: yes
       register: ec2
+
+    - name: Create SSH Group to login dynamically to EC2 Instance
+      add_host: 
+        hostname: "{{ item.public_ip }}"
+        groupname: ec2_server
+        ansible_ssh_private_key_file: /opt/key.pem
+        ansible_ssh_user: ubuntu
+      with_items: "{{ ec2.instances }}"
+
+    - name: Wait for SSH to come up
+      wait_for: 
+        host: "{{ item.public_ip }}" 
+        port: 22 
+        state: started
+      with_items: "{{ ec2.instances }}"
+
+    - name: Wait a little longer for centos
+      pause: seconds=20
+
+- hosts: ec2_server
+  become: yes
+  gather_facts: True
+  tasks:
+
+
+    - name: Update cache
+      apt: update_cache=yes
+
+    - name: Ubuntu - Install the security updates
+      shell: unattended-upgrade
+      register: apt_output
+    - name: check if reboot needed
+      stat:
+       path: /var/run/reboot-required
+      register: deb_reboot_required_check
+
+
+    - name: Rebooting machine
+      shell: sleep 2 && shutdown -r now "Ansible updates triggered"
+      async: 1
+      poll: 0
+      ignore_errors: true
+      when: deb_reboot_required_check.stat.exists
+
+    - name: Wait EC2 
+      pause: seconds=60
+
+    - name: wait for node to finish booting
+      wait_for:
+        host: 0.0.0.0
+        port: 22
+        state: started
+      ignore_errors: true
+
+    - name: Fetching Instance-ID
+      command: wget -q -O - http://169.254.169.254/latest/meta-data/instance-id
+      register: get_instance_id
+    
+- hosts: localhost
+  tasks:
+  - ec2_ami:
+      instance_id: '{{hostvars[groups["ec2_server"][0]].get_instance_id.stdout}}'
+      wait: yes
+      region: us-east-1
+      name: patch20180920
+      tags:
+        Name: newtest
+        Service: TestService
+
+
