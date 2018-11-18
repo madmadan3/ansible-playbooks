@@ -1,0 +1,46 @@
+- hosts: localhost
+  tasks:
+
+   - name: assign target to group
+     add_host:
+       hostname: "{{ item }}"
+       groupname: ec2_server
+       groups:
+       ansible_ssh_private_key_file: /opt/key.pem
+       ansible_ssh_user: root
+     with_lines: cat /var/lib/awx/projects/patch/hosts.txt
+
+
+
+- hosts: ec2_server
+  tasks:
+
+  - name: apt-check
+    shell: "/usr/lib/update-notifier/apt-check 2>&1 | cut -d ';' -f 2"
+    register: security_update
+
+  - name: echo
+    command: "echo {{inventory_hostname}} - security patch required and count {{ security_update.stdout }}"
+    register: security_update_output
+    when: security_update.stdout != "0"
+    ignore_errors: true
+
+  - name: append
+    lineinfile:
+      create: yes
+      dest: "/var/lib/awx/projects/patch/patch.log"
+      line: "{{ security_update_output.stdout }}"
+      insertafter: EOF
+    delegate_to: localhost
+
+l:
+ - name: Sending contents of a file in the email body
+   mail:
+    host: smtp.mandrillapp.com
+    port: 587 
+    username: 28283aeebd83616c6
+    password: 0432eb4224e406
+    to: Adam Shields <adam@gmail.com>
+    subject: Change log
+    body: "{{ lookup('file', '/var/www/release.txt') }}"   
+ 
